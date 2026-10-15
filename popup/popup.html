@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>Org Lens</title>
+  <link rel="stylesheet" href="../styles/tokens.css">
+  <link rel="stylesheet" href="popup.css">
+  <script type="module" src="popup.js"></script>
+</head>
+<body>
+  <div class="pp">
+    <header class="pp-head">
+      <span class="pp-logo"><i data-icon="logo"></i></span>
+      <div>
+        <div class="pp-title">Org<b>Lens</b></div>
+        <div class="pp-sub" data-en="Data and metadata explorer">Explorador de data y metadata</div>
+      </div>
+      <label class="pp-lang" title="Idioma / Language">
+        <i data-icon="globe"></i>
+        <select id="pp-lang" aria-label="Idioma / Language">
+          <option value="es">ES</option>
+          <option value="en">EN</option>
+        </select>
+      </label>
+    </header>
+
+    <main id="pp-main"></main>
+
+    <footer class="pp-foot">
+      <span><i data-icon="lock"></i><span data-en="Uses your session and permissions">Usa tu sesión y tus permisos</span></span>
+      <span><kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>O</kbd></span>
+    </footer>
+  </div>
+</body>
+</html>

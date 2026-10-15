@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Org Lens</title>
+  <link rel="icon" href="../icons/icon32.png">
+  <link rel="stylesheet" href="../styles/tokens.css">
+  <link rel="stylesheet" href="app.css">
+  <script type="module" src="app.js"></script>
+</head>
+<!-- Traducciones: el texto en español va en el HTML y el inglés en data-en / data-en-placeholder / data-en-title.
+     Los elementos con data-en no deben tener hijos (se reemplaza su textContent). -->
+<body>
+  <div class="backdrop" aria-hidden="true">
+    <span class="orb o1"></span><span class="orb o2"></span><span class="orb o3"></span>
+    <div class="grid-bg"></div>
+  </div>
+
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-logo"><i data-icon="logo"></i></span>
+      <span class="brand-name">Org<b>Lens</b></span>
+    </div>
+    <div class="spacer"></div>
+
+    <div class="org" id="org-switcher">
+      <button class="org-pill" id="org-btn" type="button">
+        <span class="org-avatar" id="org-avatar">·</span>
+        <span class="org-text">
+          <span class="org-name" id="org-name" data-en="Connecting…">Conectando…</span>
+          <span class="org-user" id="org-user">&nbsp;</span>
+        </span>
+        <span class="kind" id="org-kind">…</span>
+        <i data-icon="chevron-down" class="org-caret"></i>
+      </button>
+      <div class="org-menu" role="menu">
+        <div class="menu-title" data-en="Orgs with an active session">Orgs con sesión activa</div>
+        <div id="org-menu-list" class="menu-list"></div>
+        <div class="menu-foot">
+          <button type="button" class="ghost-btn" id="org-open-sf"><i data-icon="external"></i><span data-en="Open org">Abrir org</span></button>
+          <button type="button" class="ghost-btn" id="org-open-setup"><i data-icon="layers"></i><span>Setup</span></button>
+        </div>
+      </div>
+    </div>
+
+    <button class="icon-btn" id="open-console" type="button" title="Consola SOQL (Alt+Q)" data-en-title="SOQL console (Alt+Q)"><i data-icon="terminal"></i></button>
+    <button class="icon-btn" id="open-ide" type="button" title="IDE: Apex, triggers, LWC, Aura y Visualforce (Alt+I)" data-en-title="IDE: Apex, triggers, LWC, Aura and Visualforce (Alt+I)"><i data-icon="code"></i></button>
+    <button class="icon-btn" id="open-schema" type="button" title="Schema Builder: objetos y relaciones de la org" data-en-title="Schema Builder: the org's objects and relationships"><i data-icon="network"></i></button>
+    <button class="icon-btn" id="open-analytics" type="button" title="Reportes y dashboards" data-en-title="Reports & dashboards"><i data-icon="bar-chart"></i></button>
+    <label class="lang-select" title="Idioma / Language">
+      <i data-icon="globe"></i>
+      <select id="lang-select" aria-label="Idioma / Language">
+        <option value="es">Español</option>
+        <option value="en">English</option>
+      </select>
+    </label>
+    <button class="icon-btn" id="link-target" type="button"></button>
+    <button class="icon-btn" id="theme-toggle" type="button"></button>
+  </header>
+
+  <main>
+    <section class="hero">
+      <h1 class="hero-title"><span data-en="Find anything in your org">Encuentra cualquier cosa en tu org</span> <span class="grad-text" data-en="in seconds">en segundos</span></h1>
+      <p class="hero-sub" id="hero-sub">&nbsp;</p>
+
+      <div class="mode-switch" role="tablist" aria-label="Metadata / Data">
+        <span class="mode-slider"></span>
+        <button type="button" role="tab" data-mode="metadata"><i data-icon="grid"></i><span>Metadata</span></button>
+        <button type="button" role="tab" data-mode="data"><i data-icon="database"></i><span>Data</span></button>
+      </div>
+
+      <div class="picker-wrap">
+        <div id="md-picker"></div>
+        <div id="dt-picker" class="hidden"></div>
+        <div class="picker-hint">
+          <span><kbd>/</kbd> <span data-en="search">buscar</span></span>
+          <span><kbd>↑</kbd><kbd>↓</kbd> <span data-en="navigate">navegar</span></span>
+          <span><kbd>Enter</kbd> <span data-en="open">abrir</span></span>
+          <span><kbd>Alt</kbd>+<kbd>1</kbd>/<kbd>2</kbd> <span data-en="switch mode">cambiar modo</span></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ───────────── METADATA ───────────── -->
+    <section id="view-metadata" class="view">
+      <div id="md-home" class="home">
+        <div id="md-recent-wrap" class="hidden">
+          <div class="section-title"><i data-icon="history"></i><span data-en="Recent">Recientes</span></div>
+          <div id="md-recent" class="recent-row"></div>
+        </div>
+        <div id="md-type-grid"></div>
+      </div>
+
+      <div id="md-results" class="results hidden">
+        <div class="results-head">
+          <button class="icon-btn" id="md-back" type="button" title="Volver a los tipos" data-en-title="Back to types"><i data-icon="arrow-left"></i></button>
+          <div class="rh-ico" id="md-head-ico"></div>
+          <div class="rh-title">
+            <h2 id="md-title"></h2>
+            <p id="md-subtitle"></p>
+          </div>
+          <div id="md-health-summary" class="health-summary"></div>
+          <div class="rh-count"><span id="md-count" class="count-num">0</span><span data-en="items">elementos</span></div>
+          <span class="live-pill" id="md-live" title="Se actualiza solo cada minuto y al volver a esta pestaña" data-en-title="Updates automatically every minute and when you return to this tab"><span class="live-dot"></span><span data-en="Live">En vivo</span></span>
+          <button class="ghost-btn" id="md-soql" type="button" title="Abrir la consola con la query de este tipo" data-en-title="Open the console with this type's query"><i data-icon="terminal"></i><span>SOQL</span></button>
+          <button class="icon-btn" id="md-refresh" type="button" title="Sincronizar ahora" data-en-title="Sync now"><i data-icon="refresh"></i></button>
+        </div>
+
+        <div class="toolbar">
+          <div class="toolbar-row">
+            <label class="field grow"><i data-icon="search"></i><input id="md-search" type="text" placeholder="Filtrar por nombre, label, objeto, versión…" data-en-placeholder="Filter by name, label, object, version…" spellcheck="false" autocomplete="off"></label>
+            <div id="md-ns"></div>
+            <div id="md-object-wrap" class="hidden"><div id="md-object"></div></div>
+            <label class="field hidden" id="md-category-wrap"><i data-icon="layers"></i><select id="md-category"></select></label>
+            <label class="field hidden" id="md-status-wrap"><i data-icon="check-circle"></i>
+              <select id="md-status">
+                <option value="" data-en="All statuses">Todos los estados</option>
+                <option value="active" data-en="Active">Activos</option>
+                <option value="inactive" data-en="Inactive">Inactivos</option>
+              </select>
+            </label>
+            <label class="field"><i data-icon="clock"></i>
+              <select id="md-modified">
+                <option value="" data-en="Modified: any date">Modificado: cualquier fecha</option>
+                <option value="today" data-en="Modified today">Modificado hoy</option>
+                <option value="7" data-en="Last 7 days">Últimos 7 días</option>
+                <option value="30" data-en="Last 30 days">Últimos 30 días</option>
+                <option value="90" data-en="Last 90 days">Últimos 90 días</option>
+                <option value="365" data-en="Last year">Último año</option>
+              </select>
+            </label>
+            <label class="field"><i data-icon="shield-check"></i>
+              <select id="md-health" disabled>
+                <option value="" data-en="Conflicts: all">Conflictos: todos</option>
+                <option value="issues" data-en="With conflicts or warnings">Con conflictos o advertencias</option>
+                <option value="error" data-en="Conflicts only">Solo conflictos</option>
+                <option value="warning" data-en="Warnings only">Solo advertencias</option>
+                <option value="ok" data-en="No conflicts">Sin conflictos</option>
+              </select>
+            </label>
+            <button class="ghost-btn hidden" id="md-reset" type="button"><i data-icon="eraser"></i><span data-en="Clear">Limpiar</span></button>
+          </div>
+        </div>
+
+        <div class="table-card">
+          <div class="table-scroll" id="md-scroll">
+            <table class="grid">
+              <thead id="md-thead"></thead>
+              <tbody id="md-tbody"></tbody>
+            </table>
+            <div id="md-empty"></div>
+            <div id="md-sentinel" class="sentinel"></div>
+          </div>
+          <div class="table-foot" id="md-foot"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ───────────── DATA ───────────── -->
+    <section id="view-data" class="view hidden">
+      <div id="dt-home" class="home">
+        <div id="dt-recent-wrap" class="hidden">
+          <div class="section-title"><i data-icon="history"></i><span data-en="Recent">Recientes</span></div>
+          <div id="dt-recent" class="recent-row"></div>
+        </div>
+        <div class="section-title" data-en="Popular objects">Objetos populares</div>
+        <div id="dt-popular" class="type-grid"></div>
+        <p class="home-note"><i data-icon="lock"></i><span data-en="You'll only see the objects, fields and records your user has access to.">Solo verás los objetos, campos y registros a los que tu usuario tiene acceso.</span></p>
+      </div>
+
+      <div id="dt-results" class="results hidden">
+        <div class="results-head">
+          <button class="icon-btn" id="dt-back" type="button" title="Volver a los objetos" data-en-title="Back to objects"><i data-icon="arrow-left"></i></button>
+          <div class="rh-ico" id="dt-head-ico"></div>
+          <div class="rh-title">
+            <h2 id="dt-title"></h2>
+            <p id="dt-subtitle"></p>
+          </div>
+          <div class="rh-count"><span id="dt-count" class="count-num">0</span><span data-en="records">registros</span></div>
+          <span class="live-pill" id="dt-live" title="Se actualiza solo cada minuto y al volver a esta pestaña" data-en-title="Updates automatically every minute and when you return to this tab"><span class="live-dot"></span><span data-en="Live">En vivo</span></span>
+          <div id="dt-export"></div>
+          <a class="ghost-btn" id="dt-open-sf" data-sf href="#"><i data-icon="external"></i><span data-en="View in Salesforce">Ver en Salesforce</span></a>
+          <button class="icon-btn" id="dt-refresh" type="button" title="Sincronizar ahora" data-en-title="Sync now"><i data-icon="refresh"></i></button>
+        </div>
+
+        <div class="toolbar">
+          <div class="toolbar-row">
+            <label class="field grow"><i data-icon="search"></i><input id="dt-search" type="text" spellcheck="false" autocomplete="off"></label>
+            <label class="field" id="dt-pick-wrap"><i data-icon="filter"></i><select id="dt-pick-field"></select></label>
+            <div id="dt-pick-values"></div>
+            <label class="switch hidden" id="dt-mine-wrap"><input type="checkbox" id="dt-mine"><span class="track"></span><span data-en="My records only">Solo mis registros</span></label>
+          </div>
+          <div class="toolbar-row">
+            <label class="field"><i data-icon="calendar"></i><select id="dt-date-field"></select></label>
+            <div class="presets" id="dt-presets"></div>
+            <label class="field date"><span data-en="From">Desde</span><input type="date" id="dt-from"></label>
+            <label class="field date"><span data-en="To">Hasta</span><input type="date" id="dt-to"></label>
+            <div class="spacer"></div>
+            <button class="ghost-btn hidden" id="dt-reset" type="button"><i data-icon="eraser"></i><span data-en="Clear filters">Limpiar filtros</span></button>
+            <button class="ghost-btn" id="dt-soql-toggle" type="button" title="Abrir la consola SOQL con esta query" data-en-title="Open the SOQL console with this query"><i data-icon="terminal"></i><span>SOQL</span></button>
+          </div>
+        </div>
+
+        <div class="table-card">
+          <div class="table-scroll" id="dt-scroll">
+            <table class="grid">
+              <thead id="dt-thead"></thead>
+              <tbody id="dt-tbody"></tbody>
+            </table>
+            <div id="dt-empty"></div>
+            <div id="dt-sentinel" class="sentinel"></div>
+          </div>
+          <div class="table-foot" id="dt-foot"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div id="blocker" class="blocker hidden">
+    <div class="blocker-card">
+      <div class="blocker-ico"><i data-icon="lock"></i></div>
+      <h2 id="blocker-title"></h2>
+      <p id="blocker-text"></p>
+      <div id="blocker-list" class="menu-list"></div>
+      <button class="primary-btn" id="blocker-retry" type="button"><i data-icon="refresh"></i><span data-en="Retry">Reintentar</span></button>
+    </div>
+  </div>
+
+  <div id="drawer" class="drawer hidden">
+    <div class="drawer-backdrop" id="drawer-backdrop"></div>
+    <aside class="drawer-panel" id="drawer-panel" role="dialog" aria-modal="true" aria-label="Conflicts">
+      <header class="drawer-head">
+        <div id="drawer-head" class="dh-main"></div>
+        <button class="icon-btn" id="drawer-close" type="button" title="Cerrar (Esc)" data-en-title="Close (Esc)"><i data-icon="x"></i></button>
+      </header>
+      <div class="drawer-body" id="drawer-body"></div>
+    </aside>
+  </div>
+
+  <div id="record" class="drawer record-drawer hidden">
+    <div class="drawer-backdrop" id="record-backdrop"></div>
+    <aside class="drawer-panel" id="record-panel" role="dialog" aria-modal="true" aria-label="Record">
+      <header class="drawer-head rec-head" id="record-head"></header>
+      <div class="rec-toolbar" id="record-toolbar"></div>
+      <div class="rec-body" id="record-body"></div>
+      <footer class="rec-savebar" id="record-savebar"></footer>
+    </aside>
+  </div>
+
+  <div id="console" class="drawer console-drawer hidden">
+    <div class="drawer-backdrop" id="console-backdrop"></div>
+    <aside class="drawer-panel" id="console-panel" role="dialog" aria-modal="true" aria-label="SOQL">
+      <header class="drawer-head q-head">
+        <div class="rh-ico" style="--c:#6366f1"><i data-icon="terminal"></i></div>
+        <div class="dh-title">
+          <h3 data-en="SOQL console">Consola SOQL</h3>
+          <p id="q-sub"></p>
+        </div>
+        <div class="mode-switch q-modes" id="q-modes" role="tablist">
+          <span class="mode-slider"></span>
+          <button type="button" role="tab" data-qmode="data"><i data-icon="database"></i><span>Data</span></button>
+          <button type="button" role="tab" data-qmode="metadata"><i data-icon="grid"></i><span>Metadata</span></button>
+        </div>
+        <button class="icon-btn" id="q-close" type="button" title="Cerrar (Esc)" data-en-title="Close (Esc)"><i data-icon="x"></i></button>
+      </header>
+
+      <div class="q-bar">
+        <div id="q-object"></div>
+        <label class="switch hidden" id="q-tooling-wrap" title="Desactívalo para objetos de metadata que se consultan con la Data API (FlowDefinitionView, PermissionSet…)" data-en-title="Turn it off for metadata objects queried with the Data API (FlowDefinitionView, PermissionSet…)"><input type="checkbox" id="q-tooling" checked><span class="track"></span><span>Tooling API</span></label>
+        <div class="spacer"></div>
+        <div class="q-history" id="q-history">
+          <button type="button" class="ghost-btn" id="q-history-btn"><i data-icon="history"></i><span data-en="History">Historial</span></button>
+          <div class="q-history-pop" id="q-history-list"></div>
+        </div>
+      </div>
+
+      <div class="q-editor">
+        <pre class="q-hl" id="q-hl" aria-hidden="true"></pre>
+        <textarea id="q-input" spellcheck="false" autocomplete="off" placeholder="SELECT Id, Name FROM Account WHERE …"></textarea>
+      </div>
+      <div class="q-suggest" id="q-suggest"></div>
+
+      <div class="q-status">
+        <label class="switch" title="Ejecuta la query automáticamente mientras escribes" data-en-title="Runs the query automatically while you type"><input type="checkbox" id="q-live" checked><span class="track"></span><span data-en="Live">En vivo</span></label>
+        <span id="q-state" class="q-state"></span>
+        <span class="spacer"></span>
+        <span class="q-keys"><kbd>Ctrl</kbd>+<kbd>Enter</kbd></span>
+        <button class="primary-btn sm" id="q-run" type="button"><i data-icon="play"></i><span data-en="Run">Ejecutar</span></button>
+      </div>
+
+      <div class="q-results">
+        <div class="q-results-head">
+          <span class="q-count-wrap"><span id="q-count" class="count-num">0</span><span data-en="rows">filas</span></span>
+          <span class="spacer"></span>
+          <div id="q-export"></div>
+        </div>
+        <div class="table-scroll q-scroll" id="q-scroll">
+          <table class="grid q-grid">
+            <thead id="q-thead"></thead>
+            <tbody id="q-tbody"></tbody>
+          </table>
+          <div id="q-empty"></div>
+        </div>
+        <div class="table-foot" id="q-foot"></div>
+      </div>
+    </aside>
+  </div>
+
+  <div id="ide" class="ide hidden" role="dialog" aria-modal="true" aria-label="IDE">
+    <div class="ide-backdrop"></div>
+    <div class="ide-window">
+      <header class="drawer-head ide-head" id="ide-head"></header>
+      <div class="ide-banner hidden" id="ide-banner"></div>
+      <div class="ide-main">
+        <aside class="ide-files" id="ide-files"></aside>
+        <div class="ide-editor" id="ide-editor"></div>
+      </div>
+      <div class="ide-problems" id="ide-problems"></div>
+      <footer class="ide-status" id="ide-status"></footer>
+    </div>
+  </div>
+
+  <div id="schema" class="ide sch hidden" role="dialog" aria-modal="true" aria-label="Schema Builder">
+    <div class="ide-backdrop"></div>
+    <div class="ide-window"></div>
+  </div>
+
+  <div id="analytics" class="ide anl hidden" role="dialog" aria-modal="true" aria-label="Reports & dashboards">
+    <div class="ide-backdrop"></div>
+    <div class="ide-window"></div>
+  </div>
+
+  <div id="toasts" class="toasts" aria-live="polite"></div>
+</body>
+</html>

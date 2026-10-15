@@ -1,0 +1,51 @@
+:root {
+  color-scheme: light;
+  --bg: #f3f5fb;
+  --surface: rgba(255, 255, 255, 0.72);
+  --surface-solid: #ffffff;
+  --surface-2: #f6f7fc;
+  --border: rgba(15, 23, 42, 0.08);
+  --border-strong: rgba(15, 23, 42, 0.15);
+  --text: #0f172a;
+  --text-2: #475569;
+  --text-3: #94a3b8;
+  --accent: #4f46e5;
+  --accent-soft: rgba(79, 70, 229, 0.1);
+  --grad: linear-gradient(135deg, #0ea5e9 0%, #6366f1 52%, #a855f7 100%);
+  --grad-shine: linear-gradient(90deg, #0ea5e9, #6366f1, #a855f7, #ec4899, #0ea5e9);
+  --success: #10b981;
+  --warn: #f59e0b;
+  --danger: #ef4444;
+  --grid-line: rgba(79, 70, 229, 0.06);
+  --code-bg: #0f172a;
+  --code-text: #c7d2fe;
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.05), 0 1px 3px rgba(15, 23, 42, 0.04);
+  --shadow: 0 12px 32px -14px rgba(30, 41, 99, 0.22);
+  --shadow-lg: 0 28px 64px -22px rgba(30, 41, 99, 0.38);
+  --radius: 16px;
+  --radius-sm: 11px;
+  --font: "Segoe UI Variable Text", "Segoe UI", "Inter", system-ui, -apple-system, Roboto, sans-serif;
+  --mono: "Cascadia Code", "JetBrains Mono", "SF Mono", Consolas, monospace;
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --spring: cubic-bezier(0.3, 1.4, 0.4, 1);
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #090d1c;
+  --surface: rgba(22, 28, 52, 0.66);
+  --surface-solid: #141a31;
+  --surface-2: #1a2142;
+  --border: rgba(148, 163, 184, 0.12);
+  --border-strong: rgba(148, 163, 184, 0.22);
+  --text: #e5e9f5;
+  --text-2: #9aa6c2;
+  --text-3: #64708d;
+  --accent: #8b93ff;
+  --accent-soft: rgba(139, 147, 255, 0.15);
+  --grid-line: rgba(139, 147, 255, 0.05);
+  --code-bg: #070a16;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow: 0 14px 34px -14px rgba(0, 0, 0, 0.6);
+  --shadow-lg: 0 30px 70px -24px rgba(0, 0, 0, 0.75);
+}
