@@ -1,164 +1,186 @@
 # OrgGadget – Toolkit for Salesforce
 
-> Not affiliated with Salesforce, Inc. / No afiliado a Salesforce, Inc.
+> Not affiliated with, sponsored or endorsed by Salesforce, Inc.
 
-Extensión de navegador (Chrome / Edge, Manifest V3) para explorar rápidamente la **metadata** y la **data** de cualquier org de Salesforce (producción, sandbox, developer, scratch o trial), desde una pestaña propia.
+OrgGadget is a browser extension (Chrome / Edge, Manifest V3) that gives Salesforce admins and developers their whole org — **metadata and records** — in one fast, modern workspace. It works with production, sandbox, Developer Edition, scratch and trial orgs, and always acts with **your own user's permissions**.
 
-## Instalación (modo desarrollador)
+![OrgGadget](store/1-home.png)
 
-1. Abre `chrome://extensions` (o `edge://extensions`).
-2. Activa **Modo de desarrollador**.
-3. Haz click en **Cargar descomprimida** y elige la carpeta del proyecto (la que contiene `manifest.json`).
-4. Fija el ícono de la extensión en la barra.
+## Install
 
-## Uso
+**From the Chrome Web Store** — coming soon.
 
-1. Inicia sesión en tu org de Salesforce en una pestaña.
-2. Haz click en el ícono de OrgGadget → **Explorar esta org** (o usa `Alt+Shift+O`).
-3. Se abre una pestaña nueva con el explorador:
-   - **Metadata**: escribe o elige un tipo (Flows, Apex Classes, Triggers, Validation Rules, Custom Fields, Layouts, Permission Sets, Reports…). Verás la lista con buscador y filtros por **objeto**, **tipo**, **estado** (activo/inactivo) y **fecha de modificación**. Click en un objeto de la tabla para filtrar por él.
-   - **Data**: escribe o elige un objeto y verás sus records, con filtros por **nombre o Id**, **picklist** (Status/Stage detectado automáticamente, o cualquier otra), **solo mis registros**, y **rango de fechas** (creación, modificación o cualquier campo fecha) con atajos (Hoy, 7/30/90 días, este mes, este año). Click en las columnas para ordenar. Botón **SOQL** para ver o copiar la consulta.
-4. Click en cualquier nombre → te lleva al record o a la metadata en Salesforce. El ícono de la barra superior alterna entre abrir en **pestaña nueva** o en **la misma pestaña**.
+**From source (developer mode)**
 
-Atajos: `/` enfoca el buscador · `↑ ↓ Enter` navegar y abrir · `Esc` limpiar · `Alt+1` / `Alt+2` cambiar entre Metadata y Data.
+1. Download or clone this repository.
+2. Open `chrome://extensions` (or `edge://extensions`) and turn on **Developer mode**.
+3. Click **Load unpacked** and select the project folder (the one that contains `manifest.json`).
+4. Pin the OrgGadget icon to the toolbar.
 
-## Últimos cambios
+To update a source install, pull the latest changes and click ↻ on the OrgGadget card in `chrome://extensions`.
 
-- **Nuevo nombre e ícono:** ahora se llama **OrgGadget – Toolkit for Salesforce** (nombre corto *OrgGadget*). El ícono es una lupa con el grafo de la org y una chispa; su fuente está en `tools/icon/`.
-- **Solo orgs con sesión viva:** el popup y el selector de orgs verifican cada sesión con Salesforce y ocultan las expiradas o cerradas.
-- **Búsqueda por Subject:** el buscador global y la lista de Cases encuentran casos por *Subject* (también con parte de una palabra y aunque el caso se haya creado hace un momento).
-- **Registros relacionados:** la ficha de un registro tiene un botón *Related* que lista sus registros hijos con cantidades; queda deshabilitado si no tiene ninguno.
-- **Piezas para la Chrome Web Store** en `store/` (capturas 1280×800, promos 440×280 y 1400×560, ícono 128×128), generadas con `tools/store/`.
+## Getting started
 
-## Novedades de la 0.5 — IDE integrado
+1. Log in to your Salesforce org in a browser tab.
+2. Click the OrgGadget icon → **Explore this org** (or press `Alt+Shift+O`).
+3. The explorer opens in a new tab. Switch between **Metadata** and **Data**, pick a type or object, or just start typing.
 
-- Botón `</>` en las listas de **Apex Classes, Apex Triggers, Visualforce Pages/Components, LWC y Aura** → abre el IDE.
-- Editor **CodeMirror 6** con los colores de OrgGadget: números de línea, deshacer/rehacer, buscar y reemplazar (`Ctrl+F`), plegado, autocierre de llaves, sugerencias (`Ctrl+Space`), resaltado de Apex (incluido SOQL), JavaScript, HTML, CSS y XML.
-- **Guardar en la org** (`Ctrl+S`):
-  - Apex y Visualforce se compilan en Salesforce (igual que la Developer Console). Si hay errores, se subrayan en la línea exacta y aparecen en el panel de problemas. **Validar** compila sin guardar.
-  - LWC y Aura: todos los archivos del bundle en un explorador lateral; se guardan los modificados.
-- Protecciones: aviso si alguien modificó el componente después de abrirlo, confirmación en producción, guardado de Apex bloqueado en producción (Salesforce exige desplegar con tests), código de paquetes administrados en solo lectura y aviso al cerrar con cambios sin guardar.
-- El editor (~200 KB comprimido) se carga **solo la primera vez que abres el IDE**, así que no afecta la velocidad del resto de la extensión.
+Clicking any name takes you to that record or component in Salesforce; a toolbar button switches between opening links in a new tab or the same tab.
 
-### Regenerar el editor
+## Features
 
-El archivo `lib/vendor/codemirror.js` se genera desde `tools/codemirror`:
+### Metadata explorer
+- 30+ metadata types: Apex classes and triggers, Lightning Web Components, Aura, Visualforce, static resources, Flows, Workflow Rules, Approval Processes, Assignment Rules, Objects, Custom Fields, Validation Rules, Record Types, Global Value Sets, Duplicate Rules, Page Layouts, Lightning Pages, Custom Labels, Email Templates, Profiles, Permission Sets and Groups, Custom Permissions, Named Credentials, Reports and Dashboards.
+- **Agentforce**: agents, topics, actions and prompt templates.
+- **Custom Metadata**: Custom Metadata Types and every record of every `__mdt` type in one list.
+- Filter by object (for example, the triggers or flows of one object), type, status and last modified date.
+- **Live lists**: the open list re-syncs every minute and when you come back to the tab; new items are highlighted, edited ones flash and deleted ones disappear, without losing your filters.
 
-```
-cd tools/codemirror
-npm install
-npm run build
-```
+### Conflict detection
+Every metadata item gets an indicator — 🔴 conflict, 🟠 warning, 🟢 no conflicts. Clicking it explains **why** it happens, **what it clashes with** (with links) and **how to fix it**. The analysis is 100% rule-based and runs in your browser (rules live in `lib/conflicts.js`):
 
-CodeMirror es software libre (licencia MIT); los avisos de licencia están en `lib/vendor/THIRD_PARTY_LICENSES.txt`.
-
-## Novedades de la 0.4 — Consola SOQL y exportación
-
-- **Consola SOQL** (botón SOQL en Data y en Metadata, ícono `>_` de la barra superior o `Alt+Q`):
-  - Modos **Data** (records, REST API) y **Metadata** (Tooling API; el interruptor *Tooling API* se apaga para objetos de metadata que se consultan por Data API, como `FlowDefinitionView`).
-  - El **FROM se completa solo** con el objeto o tipo de metadata que estás viendo; el selector de objeto reescribe la query.
-  - **Resultados en vivo** mientras escribes (se puede apagar), resaltado de sintaxis, **autocompletado** de objetos, campos y palabras clave (`Tab`), `Ctrl+Enter` para ejecutar e **historial** de las últimas 20 queries.
-  - Click en un Id abre la ficha completa del registro; click en una celda la copia.
-- **Exportar records** (solo Data: en la consola y en el encabezado de la vista Data): **Excel (.xlsx)** con encabezados, filtros y fechas reales, **CSV** (UTF-8), **JSON** y **copiar como tabla** para pegar en Excel o Google Sheets. Exporta todas las páginas de la query (hasta 100.000 registros; si la query tiene `LIMIT`, se respeta).
-- El **idioma por defecto ahora es inglés** (se puede cambiar a español desde el selector).
-
-## Novedades de la 0.3 — Ficha completa y edición de registros
-
-- En **Data**, click en cualquier fila (o en el ícono 👁) abre la **ficha completa del registro** dentro de la extensión: todos los campos que tu usuario puede ver, agrupados en principales / custom / sistema, con buscador y filtros (con valor, editables, custom). Los lookups muestran el nombre y se abren en el mismo panel (con botón para volver).
-- **Edición campo por campo**: el lápiz (o doble click) abre un editor según el tipo (texto, número, moneda, picklist, multi-picklist, checkbox, fecha, fecha/hora, hora, lookup por Id). Los cambios quedan marcados en ámbar y se guardan juntos con **Guardar** (o Ctrl+Enter); **Descartar** o ↺ los revierten.
-- **Seguridad**: solo se muestran los campos que Salesforce devuelve para tu usuario (FLS). Un campo es editable solo si tu perfil puede editar el objeto, la FLS permite editar el campo y el sharing te da acceso de edición a ese registro (`UserRecordAccess`). Si no, aparece un candado con el motivo. Fórmulas, autonuméricos, campos de sistema y texto enriquecido son de solo lectura.
-- Al guardar, Salesforce aplica validation rules, triggers y flows; si rechaza algo, el error se muestra junto al campo afectado y los cambios se conservan para corregirlos.
-
-## Publicar en la Chrome Web Store
-
-1. Ejecuta `package.ps1` → genera `OrgGadget-<versión>.zip` en el Escritorio (con rutas compatibles con la tienda).
-2. Completa y publica `PRIVACY.md` en una URL pública (por ejemplo GitHub Pages).
-3. Sube el ZIP en https://chrome.google.com/webstore/devconsole, completa la ficha (usa las capturas de `store/`), la pestaña de privacidad y envía a revisión.
-4. Para cada actualización: sube la `version` en `manifest.json`, vuelve a empaquetar y sube el nuevo ZIP.
-
-## Novedades de la 0.2
-
-- **Agentforce**: nuevo grupo con *Agentes*, *Topics*, *Acciones* y *Prompt Templates*. Si la org no tiene Agentforce habilitado, la lista lo indica. Las acciones se validan contra Apex, flows y prompts existentes (acción que apunta a algo inexistente = conflicto; a un flow inactivo = advertencia). Los enlaces llevan al Setup de Agentforce / Prompt Builder (Salesforce no expone una URL estable por elemento).
-- **Custom Metadata**: *Custom Metadata Types* (con acceso directo a sus registros en Data) y *Registros de Custom Metadata* (todos los registros de todos los tipos `__mdt`, filtrables por tipo).
-- **Idioma**: selector Español / English en la barra superior (y en el popup). Traduce toda la interfaz, incluidas las explicaciones de conflictos. Cambiar el idioma recarga la vista manteniendo dónde estabas.
-- **Listas en vivo**: la lista abierta se re-sincroniza sola cada 60 s y al volver a la pestaña (indicador *En vivo*; el botón ↻ sincroniza al instante). Lo creado en la org aparece arriba resaltado como *Nuevo*, lo editado parpadea y lo borrado desaparece, sin perder filtros ni scroll. En Data, si ya cargaste varias páginas, se ofrece un botón para actualizar en vez de mover la tabla. Los objetos nuevos se agregan al selector de objetos.
-
-## Detección de conflictos en la metadata
-
-Junto a cada nombre en las listas de metadata aparece un indicador:
-
-- 🔴 **Conflicto**: un problema real o un choque con otra metadata (p. ej. dos triggers activos en el mismo objeto y evento).
-- 🟠 **Advertencia**: un riesgo o una mala práctica (p. ej. flows sin orden de ejecución, Process Builder sin soporte).
-- 🟢 **Sin conflictos**: pasó todas las verificaciones de su tipo.
-
-Al hacer click se abre un panel con **por qué** ocurre, **con qué choca** (con enlaces a cada componente) y **cómo arreglarlo**. En el encabezado hay un resumen por severidad y en la barra un filtro de conflictos.
-
-El análisis es **100 % por reglas (sin IA)**: es rápido, gratuito, reproducible y no saca datos de la org. Las reglas están en `lib/conflicts.js`:
-
-| Tipo | Verificaciones |
+| Type | Checks |
 |---|---|
-| Apex Triggers | Varios triggers activos en el mismo objeto/evento · convivencia con flows y Workflow Rules del objeto · IsValid · versión de API |
-| Apex Classes | Nombre que tapa una clase del sistema (`Database`, `Test`…) u objeto estándar · IsValid · versión de API |
-| Flows | Orden de ejecución (Trigger Order) sin definir o repetido · convivencia con triggers · Process Builder sin soporte · versión activa ≠ última · labels duplicados |
-| Workflow Rules | Sin soporte desde 31/12/2025 · re-ejecución de triggers/flows por field updates |
-| Objetos / Fields | Cerca del límite de campos custom · campos homónimos entre namespaces · labels duplicados |
-| Validation Rules | Reglas activas con el mismo mensaje en el mismo objeto |
-| Otros (LWC, Aura, VF, Static Resources, Permission Set Groups, Approval Processes, Labels, Named Credentials, Reports…) | Versión de API, tamaño, estado de recálculo, procesos superpuestos, valores/endpoints/nombres duplicados |
+| Apex Triggers | Several active triggers on the same object and event · coexistence with flows and Workflow Rules · invalid (needs recompile) · API version |
+| Apex Classes | Name that shadows a system class (`Database`, `Test`…) or standard object · invalid · API version |
+| Flows | Undefined or repeated trigger order · flows and triggers on the same object · unsupported Process Builder · newer version not activated · duplicate labels |
+| Workflow Rules | Out of support since Dec 31, 2025 · field updates that re-run triggers and flows |
+| Objects and fields | Close to the custom field limit · same-name fields across namespaces · duplicate labels |
+| Validation Rules | Active rules with the same message on the same object |
+| Agentforce actions | Action pointing to an Apex class, flow or prompt that doesn't exist or is inactive |
+| Others | API versions, size limits, recalculation status, overlapping processes, duplicate values / endpoints / names |
 
-Para agregar una regla: crea un objeto `{ label, run(rows, ctx) }` que llame a `add(row, { severity, title, why, related, fix })` y súmalo al tipo en `ANALYZERS`.
+### Records
+- **Global search** across objects by name, email, subject or Id (SOSL plus a "contains" search on Subject, so recently created cases show up too).
+- Records of any object with filters by name or Id, picklist values (status, stage…), owner ("My records only") and date ranges with quick presets.
+- **Record panel**: every field your user can see, grouped and searchable. Edit fields inline (text, numbers, picklists, checkboxes, dates, lookups…) and save — validation rules, triggers and errors are reported right on the field. Formula, system and read-only fields show a lock with the reason.
+- **Related records**: browse a record's child records (contacts, cases, tasks…) with counts, and open them in the same panel.
 
-**¿Y la IA?** No hace falta para lo anterior. Solo aportaría en un análisis más profundo del *contenido* del código (p. ej. detectar SOQL dentro de loops, o explicar en lenguaje natural la lógica de un flow). Si se quisiera, se haría así: leer el cuerpo de la clase o la definición del flow vía Tooling API, enviarlo a un modelo (Claude) con la API key que el usuario configure en las opciones de la extensión, y mostrar la respuesta en el mismo panel. Esto implica enviar código de la org a un servicio externo, por lo que debería ser opcional y explícito.
+### SOQL console
+- Data (REST API) and metadata (Tooling API) modes; the `FROM` is pre-filled with what you are looking at.
+- Results as you type, syntax highlighting, autocomplete for objects, fields and keywords (`Tab`), and query history.
+- **Export records** to Excel (`.xlsx`, with headers, filters and real dates), CSV (UTF-8) or JSON, or copy them as a table to paste into Excel or Google Sheets. Exports include every page of the query (up to 100,000 records).
 
-## Permisos y seguridad
+### Built-in IDE
+- Edit Apex classes and triggers, Visualforce pages and components, LWC and Aura bundles and **save them to your org** (`Ctrl+S`).
+- Apex and Visualforce compile in Salesforce like in the Developer Console: errors are underlined on the exact line and listed in a problems panel. **Validate** compiles without saving.
+- Warns before overwriting someone else's changes, asks for confirmation in production and blocks saving Apex in production (Salesforce requires a deployment with tests). Managed-package code is read-only.
+- The editor (CodeMirror 6) loads only the first time you open the IDE, so it doesn't slow down the rest of the extension.
 
-- La extensión **no guarda credenciales**. Reutiliza la cookie de sesión (`sid`) que ya existe en el navegador cuando estás logueado, y llama a la REST / Tooling API con ella.
-- Por eso **todo respeta los permisos del usuario**: Salesforce aplica perfil, permission sets, sharing, CRUD y FLS en cada consulta. Si tu usuario no tiene acceso a un tipo de metadata (p. ej. sin "View Setup and Configuration"), verás un mensaje indicándolo.
-- Las consultas son de solo lectura.
-- El token de sesión nunca viaja en la URL; cada página lo vuelve a leer de las cookies.
+### Reports, dashboards and schema
+- **Reports**: view them with live data and edit their design (groupings, columns, totals, filters, chart) with a live preview; changes are saved only when you click Save.
+- **Dashboards**: view with real data, filter, refresh and edit components (Lightning dashboards).
+- **Schema Builder**: an interactive canvas with your objects and their lookup / master-detail relationships. Drag, zoom, inspect fields and create custom fields.
 
-## Estructura
+### Everywhere
+- Toolbar popup with the current org, other orgs with an active session (expired sessions are hidden) and four favorite shortcuts.
+- English and Spanish, light and dark themes.
+
+## Keyboard shortcuts
+
+| Shortcut | Action |
+|---|---|
+| `Alt+Shift+O` | Open OrgGadget for the org in the current tab |
+| `/` | Focus the search box |
+| `↑` `↓` `Enter` | Navigate and open results |
+| `Alt+1` / `Alt+2` | Switch between Metadata and Data |
+| `Alt+Q` | Open the SOQL console |
+| `Ctrl+Enter` | Run the query (console) · save the record (record panel) |
+| `Ctrl+S` | Save code (IDE) |
+| `1`–`4` | Favorite shortcuts (toolbar popup) |
+
+## Security and privacy
+
+- OrgGadget never asks for or stores your password. It reuses the Salesforce session you already have open and calls the Salesforce API with it.
+- Everything respects your permissions: profile, permission sets, sharing and field-level security are enforced by Salesforce on every request.
+- The only network destination is your own Salesforce org — no analytics, no tracking, no third-party servers, no remote code.
+- Changes are sent to your org only when you explicitly save.
+
+Read the full [privacy policy](PRIVACY.md).
+
+## Development
+
+### Project structure
 
 ```
 manifest.json            Manifest V3
-background.js            Atajo de teclado
-popup/                   Panel del ícono: detecta la org actual y otras sesiones
-app/                     Explorador (pestaña completa)
-  record-panel.js        Ficha completa y edición de registros
-  query-console.js       Consola SOQL
+background.js            Keyboard shortcut and cleanup
+popup/                   Toolbar popup: current org, active sessions, favorites
+app/                     Explorer (full tab)
+  app.js                 Boot, org header, modes and navigation (#m=Type / #d=Object)
+  metadata-view.js       Metadata lists
+  data-view.js           Records, filters and global search
+  record-panel.js        Record panel, inline editing and related records
+  conflict-drawer.js     Conflict details
+  query-console.js       SOQL console
+  export-menu.js         Export menu
   code-ide.js            IDE (Apex, Visualforce, LWC, Aura)
-  export-menu.js         Menú de exportación
-  conflict-drawer.js     Panel de conflictos
-  app.js                 Arranque, org, modos, navegación (#m=Tipo / #d=Objeto)
-  metadata-view.js       Vista de metadata
-  data-view.js           Vista de records
-  combobox.js            Combobox con búsqueda + MultiSelect
-  ui.js                  Íconos, formato, toasts, storage
+  analytics-view.js      Reports and dashboards hub
+  report-editor.js       Report editor
+  dashboard-editor.js    Dashboard viewer / editor
+  schema-view.js         Schema Builder
+  charts.js              Lightweight SVG charts
+  combobox.js, ui.js     UI building blocks, icons, formatting, storage
 lib/
-  session.js             Detección de sesiones por cookies
-  sfapi.js               Cliente REST/Tooling API
-  metadata-types.js      Catálogo de tipos de metadata (queries, URLs)
-  export.js              Exportación: XLSX (sin librerías), CSV, JSON, TSV
-  code-deploy.js         Leer y guardar código vía Tooling API
-  vendor/codemirror.js   Editor (generado desde tools/codemirror)
-  i18n.js                Idioma (inglés por defecto / español)
-styles/tokens.css        Colores y tema claro/oscuro
-icons/                   Íconos de la extensión
-store/                   Capturas 1280×800 para la ficha de la tienda
-package.ps1              Genera el ZIP para publicar
-tools/codemirror/        Fuente del bundle del editor (no se incluye en el ZIP)
-PRIVACY.md               Borrador de política de privacidad
+  session.js             Salesforce session detection (cookies) and validation
+  sfapi.js               REST / Tooling API client
+  metadata-types.js      Metadata type catalog (queries, mapping, URLs)
+  conflicts.js           Conflict rules
+  code-deploy.js         Read and save code through the Tooling API
+  analytics.js, report-data.js   Reports & Dashboards API
+  schema-fields.js       Custom field creation
+  export.js              XLSX (no dependencies), CSV, JSON, TSV
+  i18n.js                English / Spanish
+  vendor/codemirror.js   Editor bundle (generated from tools/codemirror)
+styles/tokens.css        Colors and light / dark themes
+icons/                   Extension icons
+store/                   Chrome Web Store images
+tools/                   Generators for the editor bundle, icon and store images (not packaged)
+package.ps1              Builds the ZIP to upload to the store
 ```
 
-### Agregar un tipo de metadata
+### Build tasks
 
-Agrega un objeto a `TYPES` en `lib/metadata-types.js` con `key`, `label`, `group`, `icon`, `color`, `queries` (Tooling `T()` o Data `D()`, con fallbacks), `map` (registro → fila) y `url` (fila → ruta de Salesforce). Si la fila tiene `object`, aparece el filtro por objeto automáticamente.
+```bash
+# Editor bundle → lib/vendor/codemirror.js
+cd tools/codemirror && npm install && npm run build
 
-## Ideas para próximas versiones
+# Icon → icons/*.png
+node tools/icon/make-icon.mjs tools/icon
+powershell -ExecutionPolicy Bypass -File tools/icon/render-icons.ps1
 
-- Búsqueda global (SOSL) en todos los objetos y todos los tipos de metadata a la vez.
-- Selector de columnas y filtros por cualquier campo en Data.
-- Ver el código de Apex/LWC/Flow inline y buscar texto dentro del código.
-- "¿Dónde se usa?" (dependencias vía `MetadataComponentDependency`).
-- Exportar resultados a CSV.
-- Favoritos y búsquedas guardadas por org.
-- Soporte para Firefox.
+# Store images → store/*.png (from raw 1440×900 screenshots)
+node tools/store/make-store-assets.mjs <raw-screenshots> <html-out>
+powershell -ExecutionPolicy Bypass -File tools/store/render-store-assets.ps1 <html-out> store
+
+# Package for the Chrome Web Store → ../OrgGadget-<version>.zip
+powershell -ExecutionPolicy Bypass -File package.ps1
+```
+
+To release an update, bump `version` in `manifest.json`, run `package.ps1` and upload the new ZIP in the Chrome Web Store developer dashboard.
+
+### Extending
+
+- **New metadata type**: add an entry to `TYPES` in `lib/metadata-types.js` with `key`, `label`, `group`, `icon`, `color`, `queries` (Tooling `T()` or Data `D()`, with fallbacks), `map` (record → row) and `url` (row → Salesforce path). Rows with an `object` get the object filter automatically.
+- **New conflict rule**: create `{ label, run(rows, ctx) }` that calls `add(row, { severity, title, why, related, fix })` and add it to the type in `ANALYZERS` (`lib/conflicts.js`).
+
+## Roadmap ideas
+
+- "Where is this used?" (dependencies via `MetadataComponentDependency`).
+- Search across all metadata types at once.
+- Column picker and filters on any field in the records view.
+- Firefox support.
+
+## Support
+
+Found a bug or have an idea? [Open an issue](https://github.com/GermanLP14/sf-inspector/issues).
+
+Third-party notices for the bundled editor are in [`lib/vendor/THIRD_PARTY_LICENSES.txt`](lib/vendor/THIRD_PARTY_LICENSES.txt). Salesforce is a trademark of Salesforce, Inc.
+
+---
+
+## En español
+
+OrgGadget es una extensión de Chrome / Edge para explorar y editar la **metadata** y los **registros** de cualquier org de Salesforce, siempre con los permisos de tu propio usuario. Incluye detección de conflictos en la metadata, búsqueda global, ficha de registros con edición y registros relacionados, consola SOQL con exportación a Excel, un IDE para Apex y LWC, reportes, dashboards y un Schema Builder. La interfaz está disponible en inglés y en español (selector arriba a la derecha).
+
+Para instalarla desde el código: abre `chrome://extensions`, activa el **Modo de desarrollador**, haz click en **Cargar descomprimida** y elige la carpeta del proyecto. Para dudas o problemas, abre un [issue](https://github.com/GermanLP14/sf-inspector/issues). Consulta la [política de privacidad](PRIVACY.md).
