@@ -1,6 +1,5 @@
-// Service worker: atajo de teclado para abrir el explorador y login con credenciales guardadas.
+// Service worker: atajo de teclado para abrir el explorador sobre la org de la pestaña actual.
 import { getSessionForHost, isSalesforceHost } from "./lib/session.js";
-import { startLogin, onTabUpdated, onTabRemoved } from "./lib/login-flow.js";
 
 chrome.commands.onCommand.addListener(async (command) => {
   if (command !== "open-explorer") return;
@@ -18,22 +17,12 @@ chrome.commands.onCommand.addListener(async (command) => {
   });
 });
 
-// Login con credenciales guardadas: el panel lo pide y se cierra; el flujo sigue aquí.
-chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
-  if (msg?.type !== "login") return;
-  startLogin(msg.id).then(reply, (e) => reply({ error: e.message }));
-  return true;
-});
-
-// Registrados en el nivel superior: despiertan al worker si Chrome lo suspendió durante el login.
-chrome.tabs.onUpdated.addListener(onTabUpdated);
-chrome.tabs.onRemoved.addListener(onTabRemoved);
-
-// Si el panel tuvo que recargar la extensión (el worker anterior era una versión vieja),
-// retoma el login que quedó pendiente.
-(async () => {
-  const { pendingLogin } = await chrome.storage.local.get("pendingLogin");
-  if (!pendingLogin) return;
-  await chrome.storage.local.remove("pendingLogin");
-  if (Date.now() - pendingLogin.at < 60000) startLogin(pendingLogin.id).catch(() => {});
-})();
+// Limpieza: borra lo que guardaba el login con credenciales (función retirada), incluidas las
+// contraseñas cifradas y su clave, para que no quede nada de eso en el navegador.
+chrome.storage.local.remove(["vault", "pendingLogin", "swReloadAt"]).catch(() => {});
+try {
+  indexedDB.deleteDatabase("orglens-vault");
+} catch {
+  /* sin IndexedDB: no hay nada que borrar */
+}
+chrome.action.setBadgeText({ text: "" }).catch(() => {});
