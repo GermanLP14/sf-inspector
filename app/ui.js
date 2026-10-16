@@ -99,7 +99,12 @@ const ICONS = {
   download: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/>',
   sheet: '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/>',
   braces: '<path d="M8 3H7a2 2 0 0 0-2 2v5a2 2 0 0 1-2 2 2 2 0 0 1 2 2v5c0 1.1.9 2 2 2h1"/><path d="M16 21h1a2 2 0 0 0 2-2v-5c0-1.1.9-2 2-2a2 2 0 0 1-2-2V5a2 2 0 0 0-2-2h-1"/>',
-  logo: '<circle cx="10.5" cy="10.5" r="6.5"/><path d="m21 21-5.5-5.5"/><path d="M10.5 7.5v6M7.5 10.5h6"/>',
+  // Marca: lupa con un grafo de la org dentro y una chispa en el corte del aro (igual que el ícono de la extensión).
+  logo:
+    '<path d="M16.61 8.28A6.5 6.5 0 1 1 12.72 4.39"/><path d="M15.4 15.4 20.6 20.6" stroke-width="2.6"/>' +
+    '<path d="M7.9 12.3 13 11.6 10.3 7.9Z" stroke-width="1.1" opacity=".75"/>' +
+    '<circle cx="7.9" cy="12.3" r="1.25" fill="currentColor" stroke="none"/><circle cx="13" cy="11.6" r="1.45" fill="currentColor" stroke="none"/><circle cx="10.3" cy="7.9" r="1.25" fill="currentColor" stroke="none"/>' +
+    '<path class="logo-spark" d="M16.4 2.6 17 4.5 18.9 5.1 17 5.7 16.4 7.6 15.8 5.7 13.9 5.1 15.8 4.5Z" fill="#fde68a" stroke="none"/>',
 };
 
 export function icon(name, cls = "") {

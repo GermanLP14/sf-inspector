@@ -822,9 +822,9 @@ export class MetadataView {
             }
             ${
               this.def.key === "Report"
-                ? `<button class="row-btn analytics" data-open-report="${esc(r.id)}" title="${esc(L("Ver y editar en Org Lens", "View and edit in Org Lens"))}">${icon("bar-chart")}</button>`
+                ? `<button class="row-btn analytics" data-open-report="${esc(r.id)}" title="${esc(L("Ver y editar en OrgGadget", "View and edit in OrgGadget"))}">${icon("bar-chart")}</button>`
                 : this.def.key === "Dashboard"
-                  ? `<button class="row-btn analytics" data-open-dash="${esc(r.id)}" title="${esc(L("Ver y editar en Org Lens", "View and edit in Org Lens"))}">${icon("gauge")}</button>`
+                  ? `<button class="row-btn analytics" data-open-dash="${esc(r.id)}" title="${esc(L("Ver y editar en OrgGadget", "View and edit in OrgGadget"))}">${icon("gauge")}</button>`
                   : ""
             }
             ${

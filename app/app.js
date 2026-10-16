@@ -38,7 +38,7 @@ async function boot() {
   }
 
   const hostInfo = describeHost(session.host);
-  document.title = `Org Lens · ${hostInfo.name}`;
+  document.title = `OrgGadget · ${hostInfo.name}`;
   ctx = {
     api: new SalesforceApi(session),
     session,

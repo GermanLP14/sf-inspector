@@ -1,4 +1,4 @@
-// Reportes y dashboards dentro de Org Lens: lista (hub), editor de reportes y editor de dashboards.
+// Reportes y dashboards dentro de OrgGadget: lista (hub), editor de reportes y editor de dashboards.
 import { listReports, listDashboards, listFolders, reportTypes, cloneDashboard, describeDashboard, saveDashboard } from "../lib/analytics.js";
 import { L, locale } from "../lib/i18n.js";
 import { $, icon, esc, toast, friendlyError, highlight, relativeTime } from "./ui.js";

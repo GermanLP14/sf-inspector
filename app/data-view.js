@@ -70,6 +70,8 @@ const STATUS_NAMES = ["Status", "StageName", "Status__c", "Stage__c", "Estado__c
 const NON_DATA = /(Share|History|Feed|ChangeEvent|Tag|__hd)$/;
 const ID_RE = /^[a-zA-Z0-9]{15}([a-zA-Z0-9]{3})?$/;
 const SEARCHABLE_TYPES = new Set(["string", "email", "phone", "url", "picklist", "id", "combobox", "textarea"]);
+// Campos de texto que también se buscan además del campo de nombre (p. ej. Case: CaseNumber + Subject).
+const EXTRA_SEARCH_FIELDS = ["Subject", "Title"];
 const PRESETS = [
   ["today", L("Hoy", "Today")],
   ["7", L("7 días", "7 days")],
@@ -301,8 +303,8 @@ export class DataView {
       })
     );
     this.picker.input.placeholder = L(
-      `Elige un objeto (${this.objects.length}) o busca registros por nombre, email o Id…`,
-      `Pick an object (${this.objects.length}) or search records by name, email or Id…`
+      `Elige un objeto (${this.objects.length}) o busca registros por nombre, email, subject o Id…`,
+      `Pick an object (${this.objects.length}) or search records by name, email, subject or Id…`
     );
   }
 
@@ -335,9 +337,35 @@ export class DataView {
     if (!targets.length || q.replace(/[^\p{L}\p{N}]/gu, "").length < 2) return update(items, items.length ? null : { text: L("Escribe al menos 2 letras o números", "Type at least 2 letters or numbers") });
     update(items, { loading: true, text: L(`Buscando registros en ${targets.length} objetos…`, `Searching records in ${targets.length} objects…`) });
     const sosl = `FIND {${term}*} IN ALL FIELDS RETURNING ${targets.map((t) => `${t.o.name}(Id, ${t.fields.join(", ")} LIMIT ${SEARCH_PER_OBJECT})`).join(", ")} LIMIT ${SEARCH_LIMIT}`;
+    // SOSL solo encuentra palabras (o inicios de palabra) ya indexadas. Para los objetos con Subject
+    // (Case, Task, Event, Work Order) se suma una consulta "contiene" sobre sus campos: así aparecen
+    // aunque el texto esté en medio de una palabra o el registro se haya creado hace un momento.
+    const containsTargets = targets.filter((t) => t.fields.includes("Subject"));
+    const like = likeEscape(q.trim());
+    const containsQuery = (t) =>
+      this.ctx.api
+        .query(`SELECT Id, ${t.fields.join(", ")} FROM ${t.o.name} WHERE ${t.fields.map((f) => `${f} LIKE '%${like}%'`).join(" OR ")} LIMIT ${SEARCH_PER_OBJECT}`)
+        .then((r) => r.records)
+        .catch(() => []); // sin acceso a ese objeto: se ignora
     try {
-      const res = await this.ctx.api.search(sosl);
-      const recs = res?.searchRecords || [];
+      const [res, ...contains] = await Promise.all([
+        this.ctx.api.search(sosl).catch((e) => {
+          if (e.status === 401 || !containsTargets.length) throw e;
+          return { searchRecords: [] }; // si falla SOSL igual mostramos las coincidencias por Subject
+        }),
+        ...containsTargets.map(containsQuery),
+      ]);
+      // Une SOSL + coincidencias por Subject sin duplicados, agrupado en el orden de los objetos.
+      const seen = new Set();
+      const byType = new Map();
+      for (const r of [...(res?.searchRecords || []), ...contains.flat()]) {
+        if (!r?.Id || seen.has(r.Id)) continue;
+        seen.add(r.Id);
+        const type = r.attributes?.type;
+        if (!byType.has(type)) byType.set(type, []);
+        byType.get(type).push(r);
+      }
+      const recs = targets.flatMap((t) => byType.get(t.o.name) || []);
       const byName = new Map(targets.map((t) => [t.o.name, t]));
       for (const r of recs) {
         const t = byName.get(r.attributes?.type);
@@ -498,7 +526,8 @@ export class DataView {
     const fields = d.fields;
     const byName = Object.fromEntries(fields.map((f) => [f.name, f]));
     const nameField = fields.find((f) => f.nameField)?.name || null;
-    const nf = nameField ? byName[nameField] : null;
+    const searchable = (f) => f && f.filterable && SEARCHABLE_TYPES.has(f.type);
+    const searchFields = [nameField, ...EXTRA_SEARCH_FIELDS].filter((n, i, a) => n && a.indexOf(n) === i && searchable(byName[n]));
     const picklists = fields
       .filter((f) => f.type === "picklist" && f.filterable && f.picklistValues?.length)
       .sort((a, b) => a.label.localeCompare(b.label));
@@ -516,7 +545,7 @@ export class DataView {
       keyPrefix: d.keyPrefix,
       byName,
       nameField,
-      searchField: nf && nf.filterable && SEARCHABLE_TYPES.has(nf.type) ? nameField : null,
+      searchFields,
       picklists,
       statusField: statusField?.name || "",
       dateFields,
@@ -546,10 +575,11 @@ export class DataView {
     const m = this.meta;
     const s = this.state;
     const el = this.el;
-    const nameLabel = m.searchField ? m.byName[m.searchField].label : null;
+    const labels = m.searchFields.map((n) => m.byName[n].label);
+    const nameLabel = labels.length ? labels.join(L(" o ", " or ")) : null;
     el.search.value = s.q;
     el.search.placeholder = nameLabel
-      ? L(`Buscar por ${nameLabel} o pegar un Id…`, `Search by ${nameLabel} or paste an Id…`)
+      ? L(`Buscar por ${nameLabel}, o pegar un Id…`, `Search by ${nameLabel}, or paste an Id…`)
       : L("Pegar un Id de registro…", "Paste a record Id…");
 
     el.pickWrap.classList.toggle("hidden", !m.picklists.length);
@@ -619,6 +649,10 @@ export class DataView {
     const cols = [];
     if (m.nameField) cols.push({ key: m.nameField, label: f(m.nameField).label, kind: "name", sortable: f(m.nameField).sortable });
     else cols.push({ key: "Id", label: "Id", kind: "name", sortable: true });
+    // Los otros campos de búsqueda (p. ej. Subject) se muestran para ver dónde coincide el texto.
+    m.searchFields
+      .filter((n) => n !== m.nameField)
+      .forEach((n) => cols.push({ key: n, label: f(n).label, kind: "text", hl: true, sortable: f(n).sortable }));
     if (s.pickField && f(s.pickField)) cols.push({ key: s.pickField, label: f(s.pickField).label, kind: "pill", sortable: f(s.pickField).sortable });
     if (m.hasRecordType) cols.push({ key: "RecordType.Name", label: "Record Type", kind: "text" });
     if (m.hasOwner) cols.push({ key: "Owner.Name", label: L("Propietario", "Owner"), kind: "owner" });
@@ -642,7 +676,10 @@ export class DataView {
 
     if (s.q) {
       if (ID_RE.test(s.q) && (!m.keyPrefix || s.q.startsWith(m.keyPrefix))) where.push(`Id = '${s.q}'`);
-      else if (m.searchField) where.push(`${m.searchField} LIKE '%${likeEscape(s.q)}%'`);
+      else if (m.searchFields.length) {
+        const like = m.searchFields.map((n) => `${n} LIKE '%${likeEscape(s.q)}%'`);
+        where.push(like.length > 1 ? `(${like.join(" OR ")})` : like[0]);
+      }
     }
     if (s.pickField && s.pickValues.length) {
       where.push(`${s.pickField} IN (${s.pickValues.map((v) => `'${soqlEscape(v)}'`).join(", ")})`);
@@ -871,7 +908,8 @@ export class DataView {
                 <a class="row-btn" data-sf href="${esc(href)}" title="${esc(L("Abrir en Salesforce", "Open in Salesforce"))}">${icon("external")}</a>
               </td>`;
             default:
-              return `<td>${v == null || v === "" ? '<span class="dash">—</span>' : esc(v)}</td>`;
+              if (v == null || v === "") return '<td><span class="dash">—</span></td>';
+              return c.hl ? `<td class="c-text" title="${esc(v)}">${highlight(v, q)}</td>` : `<td>${esc(v)}</td>`;
           }
         });
         const cls = [isNew(rec) && "is-new", this.flashIds.has(rec.Id) && "is-updated"].filter(Boolean).join(" ");

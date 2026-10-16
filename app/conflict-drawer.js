@@ -147,7 +147,7 @@ export class ConflictDrawer {
     return `<div class="rel">
       <span class="rel-ico" style="--c:${t?.color || "var(--accent)"}">${icon(t?.icon || "box")}</span>
       <div class="rel-text"><b>${esc(rel.name)}</b><span>${esc(meta)}</span></div>
-      <button class="row-btn" data-find-type="${esc(rel.typeKey)}" data-find-name="${esc(rel.name)}" title="${esc(L("Ver en Org Lens", "Show in Org Lens"))}">${icon("search")}</button>
+      <button class="row-btn" data-find-type="${esc(rel.typeKey)}" data-find-name="${esc(rel.name)}" title="${esc(L("Ver en OrgGadget", "Show in OrgGadget"))}">${icon("search")}</button>
       ${href ? `<a class="row-btn" data-sf href="${esc(href)}" title="${esc(L("Abrir en Salesforce", "Open in Salesforce"))}">${icon("external")}</a>` : ""}
     </div>`;
   }

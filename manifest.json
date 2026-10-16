@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
-  "name": "Org Lens for Salesforce",
-  "short_name": "Org Lens",
+  "name": "OrgGadget – Toolkit for Salesforce",
+  "short_name": "OrgGadget",
   "version": "0.5.0",
-  "description": "Explora rápidamente la data y la metadata de cualquier org de Salesforce, respetando los permisos de tu usuario.",
+  "description": "Explore and edit your Salesforce org's data and metadata, fast and with your own permissions. Not affiliated with Salesforce, Inc.",
   "permissions": [
     "cookies",
     "storage",
@@ -21,7 +21,7 @@
     "https://*.sfcrmproducts.cn/*"
   ],
   "action": {
-    "default_title": "Org Lens",
+    "default_title": "OrgGadget",
     "default_popup": "popup/popup.html",
     "default_icon": {
       "16": "icons/icon16.png",
@@ -45,7 +45,7 @@
       "suggested_key": {
         "default": "Alt+Shift+O"
       },
-      "description": "Abrir Org Lens para la org de la pestaña actual"
+      "description": "Open OrgGadget for the org in the current tab"
     }
   },
   "minimum_chrome_version": "114"

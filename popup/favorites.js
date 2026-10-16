@@ -1,6 +1,6 @@
 // Catálogo de atajos favoritos del panel (4 lugares, teclas 1–4).
 // Cada atajo tiene un id «grupo:clave»:
-//   tool:*  herramientas de Org Lens (abren el explorador con la herramienta abierta)
+//   tool:*  herramientas de OrgGadget (abren el explorador con la herramienta abierta)
 //   m:*     un tipo de metadata (abre su lista)          → app.html#m=<tipo>
 //   d:*     un objeto de data (abre sus registros)        → app.html#d=<objeto>
 //   sf:*    una página de Salesforce (abre la org)
@@ -11,7 +11,7 @@ export const DEFAULT_FAVS = ["tool:soql", "tool:ide", "tool:schema", "tool:analy
 export const FAV_SLOTS = 4;
 
 export const GROUPS = [
-  { id: "tool", label: L("Herramientas de Org Lens", "Org Lens tools") },
+  { id: "tool", label: L("Herramientas de OrgGadget", "OrgGadget tools") },
   { id: "m", label: L("Metadata (abre la lista del tipo)", "Metadata (opens the type's list)") },
   { id: "d", label: L("Data (abre los registros)", "Data (opens the records)") },
   { id: "sf", label: L("Páginas de Salesforce", "Salesforce pages") },

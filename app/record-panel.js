@@ -20,6 +20,11 @@ const EDITABLE_TYPES = new Set([
   "int", "double", "currency", "percent", "date", "datetime", "time", "reference", "encryptedstring",
 ]);
 const NUMBER_TYPES = new Set(["int", "double", "currency", "percent"]);
+// Relaciones hijas que no son "registros relacionados" para el usuario (sharing, historial, feeds…).
+const NON_RELATED = /(Share|ChangeEvent|Feed|History|__Tag)$/;
+const REL_CHUNK = 10; // subconsultas por query al contar relacionados
+const REL_COUNT_MAX = 200; // se cuenta hasta acá; más = "200+"
+const REL_PAGE = 50; // registros que se muestran por lista
 
 const pad = (n) => String(n).padStart(2, "0");
 const toLocalInput = (iso) => {
@@ -60,6 +65,10 @@ export class RecordPanel {
     this.generalError = null;
     this.names = new Map(); // Id referenciado → { name, obj }
     this.flash = new Set();
+    this.view = "fields"; // fields | related
+    this.related = null; // null = buscando · [] = sin relacionados · [{ rel, label, count }]
+    this.relOpen = new Map(); // relationshipName → { loading, records, error }
+    this.relQ = "";
   }
 
   get isOpen() {
@@ -85,11 +94,22 @@ export class RecordPanel {
     });
 
     const onSearch = debounce(() => {
-      this.filter.q = this.toolbar.querySelector("input").value.trim().toLowerCase();
+      const q = this.toolbar.querySelector("input").value.trim().toLowerCase();
+      if (this.view === "related") this.relQ = q;
+      else this.filter.q = q;
       this.renderBody();
     }, 100);
     this.toolbar.addEventListener("input", (e) => e.target.matches("input") && onSearch());
     this.toolbar.addEventListener("click", (e) => {
+      const rel = e.target.closest('[data-act="related"]');
+      if (rel) {
+        if (rel.disabled) return;
+        this.view = this.view === "related" ? "fields" : "related";
+        this.renderToolbar();
+        this.renderBody(true);
+        this.body.scrollTop = 0;
+        return;
+      }
       const chip = e.target.closest("[data-mode]");
       if (!chip) return;
       this.filter.mode = chip.dataset.mode;
@@ -103,6 +123,8 @@ export class RecordPanel {
       if (copy) return copyText(copy.dataset.copy);
       const ref = t.closest("[data-open-ref]");
       if (ref) return this.open(ref.dataset.obj, ref.dataset.openRef, { push: true });
+      const relToggle = t.closest("[data-rel-toggle]");
+      if (relToggle) return this.toggleRelated(relToggle.dataset.relToggle);
       const row = t.closest(".frow");
       if (!row) return;
       const name = row.dataset.field;
@@ -147,7 +169,7 @@ export class RecordPanel {
 
   async open(objectName, id, { push = false } = {}) {
     if (!this.confirmLoseChanges()) return;
-    if (push && this.current) this.stack.push(this.current);
+    if (push && this.current) this.stack.push({ ...this.current, view: this.view });
     else if (!push) this.stack = [];
     this.current = { objectName, id };
     this.root.classList.remove("hidden");
@@ -157,8 +179,9 @@ export class RecordPanel {
 
   back() {
     if (!this.stack.length || !this.confirmLoseChanges()) return;
-    this.current = this.stack.pop();
-    this.load();
+    const prev = this.stack.pop();
+    this.current = { objectName: prev.objectName, id: prev.id };
+    this.load({ view: prev.view });
   }
 
   reload() {
@@ -174,11 +197,12 @@ export class RecordPanel {
     setTimeout(() => !this.isOpen && this.root.classList.add("hidden"), 380);
   }
 
-  async load({ keepFlash = false } = {}) {
+  async load({ keepFlash = false, view = "fields" } = {}) {
     const { objectName, id } = this.current;
     const flash = keepFlash ? this.flash : new Set();
     this.resetState();
     this.flash = flash;
+    this.view = view;
     const token = ++this.token;
     this.renderLoading();
     try {
@@ -194,6 +218,7 @@ export class RecordPanel {
       this.fields = this.buildFields();
       this.render();
       this.resolveNames(token);
+      this.loadRelated(token);
       if (this.flash.size) setTimeout(() => this.flash.clear(), 1600);
     } catch (e) {
       if (token !== this.token) return;
@@ -328,6 +353,21 @@ export class RecordPanel {
 
   render() {
     this.renderHead();
+    this.renderToolbar();
+    this.renderBody(true);
+    this.renderSavebar();
+  }
+
+  renderToolbar() {
+    if (this.view === "related") {
+      const n = this.related?.length || 0;
+      this.toolbar.innerHTML = `
+        <label class="field grow">${icon("search")}<input type="text" placeholder="${esc(
+          L(`Buscar entre ${n} listas relacionadas…`, `Search ${n} related lists…`)
+        )}" value="${esc(this.relQ)}" spellcheck="false"></label>
+        ${this.relatedBtnHtml()}`;
+      return;
+    }
     const total = this.fields.length;
     const editable = this.fields.filter((x) => x.editable).length;
     const modes = [
@@ -346,17 +386,17 @@ export class RecordPanel {
       <div class="presets">${modes
         .map(([k, l]) => `<button type="button" class="chip-btn ${this.filter.mode === k ? "on" : ""}" data-mode="${k}">${esc(l)}</button>`)
         .join("")}</div>
+      ${this.relatedBtnHtml()}
       <div class="rec-stats">${icon("shield-check")}<span>${esc(
         L(`${total} campos visibles · ${editable} editables`, `${total} visible fields · ${editable} editable`)
       )}</span></div>
       ${note ? `<div class="rec-note">${icon("lock")}<span>${esc(note)}</span></div>` : ""}`;
-    this.renderBody(true);
-    this.renderSavebar();
   }
 
   /** animate = solo en la primera carga; los re-render (filtros, errores) no re-animan las filas. */
   renderBody(animate = false) {
     this.body.classList.toggle("no-anim", !animate);
+    if (this.view === "related") return this.renderRelated();
     const q = this.filter.q;
     const mode = this.filter.mode;
     const visible = this.fields.filter(({ f, editable, section }) => {
@@ -687,6 +727,163 @@ export class RecordPanel {
       this.renderSavebar();
       toast(L("Salesforce no aceptó los cambios", "Salesforce rejected the changes"), "error");
     }
+  }
+
+  // ───────────────────────────────────────── Registros relacionados
+  relatedBtnHtml() {
+    if (this.view === "related") {
+      return `<button type="button" class="rel-btn back" data-act="related">${icon("arrow-left")}<span>${esc(L("Volver a los campos", "Back to fields"))}</span></button>`;
+    }
+    if (this.related === null) {
+      return `<button type="button" class="rel-btn loading" data-act="related" disabled><span class="spinner"></span><span>${esc(L("Buscando relacionados…", "Checking related…"))}</span></button>`;
+    }
+    const n = this.related.length;
+    if (!n) {
+      return `<button type="button" class="rel-btn" data-act="related" disabled title="${esc(
+        L("Este registro no tiene registros relacionados visibles para tu usuario", "This record has no related records visible to your user")
+      )}">${icon("link")}<span>${esc(L("Sin relacionados", "No related records"))}</span></button>`;
+    }
+    const total = this.related.reduce((a, r) => a + r.count, 0);
+    const more = this.related.some((r) => r.count > REL_COUNT_MAX);
+    return `<button type="button" class="rel-btn has" data-act="related" title="${esc(
+      L(`${total}${more ? "+" : ""} registros en ${n} listas`, `${total}${more ? "+" : ""} records in ${n} lists`)
+    )}">${icon("link")}<span>${esc(L("Relacionados", "Related"))}</span><b>${n}</b></button>`;
+  }
+
+  /** Cuenta los registros de cada relación hija con subconsultas agrupadas (en segundo plano). */
+  async loadRelated(token) {
+    const { objectName, id } = this.current;
+    const api = this.ctx.api;
+    let global = [];
+    try {
+      global = await api.describeGlobal();
+    } catch {
+      /* sin describe global: se intenta igual */
+    }
+    const byName = new Map(global.map((g) => [g.name, g]));
+    const rels = (this.describe.childRelationships || []).filter(
+      (r) => r.relationshipName && !r.deprecatedAndHidden && !NON_RELATED.test(r.childSObject) && (!global.length || byName.has(r.childSObject))
+    );
+    const counts = new Map();
+    const countQuery = (list) =>
+      `SELECT Id, ${list.map((r) => `(SELECT Id FROM ${r.relationshipName} LIMIT ${REL_COUNT_MAX + 1})`).join(", ")} FROM ${objectName} WHERE Id = '${soqlEscape(id)}'`;
+    const read = (rec, list) => list.forEach((r) => counts.set(r.relationshipName, rec?.[r.relationshipName]?.records?.length || 0));
+
+    for (let i = 0; i < rels.length; i += REL_CHUNK) {
+      if (token !== this.token) return;
+      const chunk = rels.slice(i, i + REL_CHUNK);
+      try {
+        read((await api.query(countQuery(chunk))).records[0], chunk);
+      } catch {
+        // Alguna relación no admite subconsultas: se prueban de a una y se ignoran las que fallan.
+        await Promise.all(
+          chunk.map((r) =>
+            api
+              .query(countQuery([r]))
+              .then((res) => read(res.records[0], [r]))
+              .catch(() => {})
+          )
+        );
+      }
+    }
+    if (token !== this.token) return;
+
+    const sameChild = new Map();
+    rels.forEach((r) => sameChild.set(r.childSObject, (sameChild.get(r.childSObject) || 0) + 1));
+    this.related = rels
+      .filter((r) => counts.get(r.relationshipName) > 0)
+      .map((r) => {
+        const g = byName.get(r.childSObject);
+        const base = g?.labelPlural || g?.label || r.relationshipName;
+        return { rel: r, label: sameChild.get(r.childSObject) > 1 ? `${base} · ${r.field}` : base, count: counts.get(r.relationshipName) };
+      })
+      .sort((a, b) => a.label.localeCompare(b.label));
+    this.prefixMap = new Map(global.filter((g) => g.keyPrefix).map((g) => [g.keyPrefix, g.name]));
+    if (this.view === "related" && !this.related.length) this.view = "fields";
+    this.renderToolbar();
+    if (this.view === "related") this.renderBody();
+  }
+
+  renderRelated() {
+    if (this.related === null) {
+      this.body.innerHTML = `<div class="empty"><div class="e-ico">${icon("link")}</div><h3>${esc(L("Buscando relacionados…", "Checking related…"))}</h3></div>`;
+      return;
+    }
+    const q = this.relQ;
+    const list = this.related.filter((r) => !q || `${r.label} ${r.rel.childSObject} ${r.rel.relationshipName}`.toLowerCase().includes(q));
+    const fmtCount = (n) => (n > REL_COUNT_MAX ? `${REL_COUNT_MAX}+` : n.toLocaleString(locale));
+    this.body.innerHTML = list.length
+      ? `<section class="rec-sec"><h4>${esc(L("Registros relacionados", "Related records"))} <span>${list.length}</span></h4>${list
+          .map((r, i) => {
+            const [ic, color] = objectStyle({ name: r.rel.childSObject, custom: r.rel.childSObject.includes("__") });
+            const st = this.relOpen.get(r.rel.relationshipName);
+            const href = this.ctx.url(`/lightning/r/${this.current.objectName}/${this.current.id}/related/${r.rel.relationshipName}/view`);
+            return `<div class="rel-group ${st ? "open" : ""}" style="--i:${Math.min(i, 20)}">
+              <button type="button" class="rel-head" data-rel-toggle="${esc(r.rel.relationshipName)}">
+                <span class="rel-ico" style="--c:${color}">${icon(ic)}</span>
+                <span class="rel-text"><b>${esc(r.label)}</b><span>${esc(r.rel.childSObject)} · ${esc(r.rel.field)}</span></span>
+                <span class="rel-count">${fmtCount(r.count)}</span>
+                ${icon("chevron-down", "rel-caret")}
+              </button>
+              ${st ? this.relatedItemsHtml(r, st, href) : ""}
+            </div>`;
+          })
+          .join("")}</section>`
+      : `<div class="empty"><div class="e-ico">${icon("search")}</div><h3>${esc(L("Ninguna lista coincide", "No list matches"))}</h3></div>`;
+  }
+
+  relatedItemsHtml(r, st, href) {
+    const all = r.count > REL_COUNT_MAX ? `${REL_COUNT_MAX}+` : String(r.count);
+    const foot = `<a class="rel-more" data-sf href="${esc(href)}">${icon("external")}<span>${esc(
+      r.count > REL_PAGE ? L(`Ver los ${all} en Salesforce`, `View all ${all} in Salesforce`) : L("Ver la lista en Salesforce", "View the list in Salesforce")
+    )}</span></a>`;
+    if (st.loading) return `<div class="rel-items"><div class="menu-loading"><span class="spinner"></span>${esc(L("Cargando…", "Loading…"))}</div></div>`;
+    if (st.error) return `<div class="rel-items"><div class="f-error">${icon("alert-triangle")}<span>${esc(st.error)}</span></div>${foot}</div>`;
+    return `<div class="rel-items">${st.records
+      .map((rec) => {
+        const obj = this.prefixMap?.get(String(rec.Id).slice(0, 3)) || r.rel.childSObject;
+        const name = (st.nameField && rec[st.nameField]) || rec.Id;
+        const when = rec.CreatedDate ? relativeTime(rec.CreatedDate) : "";
+        return `<button type="button" class="ref-link rel-item" data-open-ref="${esc(rec.Id)}" data-obj="${esc(obj)}" title="${esc(L("Abrir aquí", "Open here"))}">
+          ${icon("eye")}<span>${esc(name)}</span>${when ? `<em>${esc(when)}</em>` : ""}<em class="mono">${esc(rec.Id)}</em></button>`;
+      })
+      .join("")}${foot}</div>`;
+  }
+
+  /** Despliega una lista: trae sus primeros registros con una subconsulta sobre este registro. */
+  async toggleRelated(relName) {
+    if (this.relOpen.has(relName)) {
+      this.relOpen.delete(relName);
+      return this.renderBody();
+    }
+    const r = this.related.find((x) => x.rel.relationshipName === relName);
+    const st = { loading: true };
+    this.relOpen.set(relName, st);
+    this.renderBody();
+    const token = this.token;
+    const { objectName, id } = this.current;
+    try {
+      let nameField = null;
+      try {
+        nameField = (await this.ctx.api.describe(r.rel.childSObject)).fields.find((f) => f.nameField)?.name || null;
+      } catch {
+        nameField = null;
+      }
+      const fields = ["Id", nameField, "CreatedDate"].filter((v, i, a) => v && a.indexOf(v) === i);
+      const sub = (f, order) =>
+        `SELECT (SELECT ${f.join(", ")} FROM ${relName}${order ? " ORDER BY CreatedDate DESC" : ""} LIMIT ${REL_PAGE}) FROM ${objectName} WHERE Id = '${soqlEscape(id)}'`;
+      let res;
+      try {
+        res = await this.ctx.api.query(sub(fields, true));
+      } catch {
+        res = await this.ctx.api.query(sub(["Id"], false)); // objetos sin nombre o sin CreatedDate
+        nameField = null;
+      }
+      Object.assign(st, { loading: false, records: res.records[0]?.[relName]?.records || [], nameField });
+    } catch (e) {
+      Object.assign(st, { loading: false, error: friendlyError(e) });
+    }
+    if (token === this.token && this.relOpen.get(relName) === st) this.renderBody();
   }
 
   // ───────────────────────────────────────── Nombres de los lookups

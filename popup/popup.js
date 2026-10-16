@@ -1,9 +1,9 @@
-import { getSessionForHost, listSessions, describeHost, isSalesforceHost, lightningHost } from "../lib/session.js";
+import { getSessionForHost, listSessions, isSessionAlive, describeHost, isSalesforceHost, lightningHost } from "../lib/session.js";
 import { L, lang, setLang, translateStatic } from "../lib/i18n.js";
 import { $, icon, esc, initials, hydrateIcons, storage, highlight } from "../app/ui.js";
 import { DEFAULT_FAVS, FAV_SLOTS, GROUPS, SF_PAGES, catalog, favById, normalizeFavs } from "./favorites.js";
 
-const state = { tab: null, current: null, onSalesforce: false, sessions: [], favs: DEFAULT_FAVS, favEdit: null };
+const state = { tab: null, current: null, onSalesforce: false, sessions: null, favs: DEFAULT_FAVS, favEdit: null };
 
 init();
 
@@ -31,8 +31,13 @@ async function init() {
   state.onSalesforce = isSalesforceHost(hostname);
   state.current = state.onSalesforce ? await getSessionForHost(hostname) : null;
   state.favs = normalizeFavs((await chrome.storage.local.get("favShortcuts")).favShortcuts);
-  state.sessions = (await listSessions()).filter((s) => !state.current || s.orgId !== state.current.orgId);
-  render();
+  render(); // se muestra enseguida; las sesiones se verifican con Salesforce y se actualiza
+
+  // Solo se listan orgs cuya sesión sigue viva (la cookie puede quedar aunque la sesión haya expirado).
+  const [currentAlive, sessions] = await Promise.all([state.current ? isSessionAlive(state.current) : null, listSessions()]);
+  if (currentAlive === false) state.current = null;
+  state.sessions = sessions.filter((s) => !state.current || s.orgId !== state.current.orgId);
+  if (!state.favEdit) render();
 
   document.body.addEventListener("click", onClick);
   document.body.addEventListener("input", (e) => {
@@ -62,7 +67,9 @@ function render() {
     <section class="pp-current">${currentHtml()}</section>
     <div class="pp-label">${esc(state.current ? L("Otras orgs con sesión activa", "Other orgs with an active session") : L("Orgs con sesión activa", "Orgs with an active session"))}</div>
     <div class="pp-list">${
-      state.sessions.length
+      !state.sessions
+        ? `<div class="pp-empty pp-checking"><span class="pp-spin"></span>${esc(L("Verificando sesiones…", "Checking sessions…"))}</div>`
+        : state.sessions.length
         ? state.sessions
             .map(
               (s, i) => `<button class="pp-org" data-host="${esc(s.host)}" style="--i:${i}">
